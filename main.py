@@ -1,54 +1,82 @@
 #!/usr/bin/env python3
 """
-Script nivel 0:
-- Controlar VizDoom vía API (sin teclado humano).
-- Ver cómo se arma el loop: reset -> get_state -> choose_action -> make_action.
-- Guardar logs simples para futuros experimentos / debugging.
+Script nivel 0 (headless + policy tonta):
+- Controlar VizDoom vía API sin ventana (modo entrenamiento).
+- Loop: reset -> get_state -> choose_action -> make_action.
+- Policy tonta pero lógica para escenarios tipo defend_the_center.
+- Guardar logs simples (frame, acción, reward, [health, ammo, kills]).
 """
-
+import time
 import vizdoom as vzd
 import os
-import random
 from datetime import datetime
-import time
 
+# Ruta base donde tienes los escenarios de VizDoom
 DOOM_DIR = "/home/diegorandolp/Deep/Doom_project"
 
+# Escenario elegido:
+# opciones típicas: "basic", "defend_the_center", "defend_the_line", "deathmatch"
+SCENARIO = "defend_the_center"
+
 # -------------------------
-# 1. Construir el entorno
+# 1. Helpers de config
 # -------------------------
 
 def get_config_path():
     """
-    Ubica el archivo basic.cfg dentro de la instalación de VizDoom.
-    Ajusta esto si tienes tus configs en otra carpeta.
+    Devuelve la ruta al archivo .cfg del escenario elegido.
+
+    Convención usual de VizDoom:
+    - basic.cfg
+    - defend_the_center.cfg
+    - defend_the_line.cfg
+    - deathmatch.cfg
+
+    Ajusta si tu estructura es distinta.
     """
-    return os.path.join(DOOM_DIR, "scenarios", "basic.cfg")
+    cfg_name = f"{SCENARIO}.cfg"
+    cfg_path = os.path.join(DOOM_DIR, "scenarios", cfg_name)
+
+    if not os.path.isfile(cfg_path):
+        # Fallback: si no existe, usa basic.cfg para no romper,
+        # pero idealmente siempre deberías tener el cfg del escenario.
+        print(f"[WARN] No se encontró {cfg_path}, usando basic.cfg")
+        cfg_path = os.path.join(DOOM_DIR, "scenarios", "basic.cfg")
+
+    return cfg_path
+
 
 def create_game():
     """
-    Crea y configura una instancia de DoomGame.
-    En este nivel usamos:
-    - Modo PLAYER para ver el juego en "tiempo real".
-    - Ventana visible para confirmar visualmente que las acciones por API funcionan.
+    Crea y configura DoomGame para correr SIN ventana.
+    Ideal para entrenamiento en servidor/cluster.
     """
     game = vzd.DoomGame()
+
+    # Config principal del escenario
     config_path = get_config_path()
     game.load_config(config_path)
 
-    # Mostrar ventana (útil al inicio para debug visual).
+    # Escenario (.wad) asociado (solo si aplica).
+    # Si el cfg ya lo setea internamente, esto es opcional.
+    wad_path = os.path.join(DOOM_DIR, "scenarios", f"{SCENARIO}.wad")
+    if os.path.isfile(wad_path):
+        game.set_doom_scenario_path(wad_path)
+
+    # -------- CAMBIOS CLAVE PARA MODO SIN VENTANA --------
+    # 1) No mostrar ventana.
     game.set_window_visible(True)
 
-    # Modo:
-    # - PLAYER: control paso a paso (ideal para entender el loop).
-    # - SPECTATOR/ASYNC/etc. los veremos más adelante.
+    # 2) Opcional: sin sonido (ligeramente más rápido).
+    game.set_sound_enabled(False)
+
+    # Modo de control:
+    # PLAYER = step síncrono controlado por nosotros (perfecto para RL).
     game.set_mode(vzd.Mode.PLAYER)
 
-    # Opcional: resolución de la pantalla (más chico = más rápido).
-    # Puedes cambiar esto luego para tu encoder visual.
-    game.set_screen_resolution(vzd.ScreenResolution.RES_640X480)
+    # Resolución: más chico = más rápido.
+    game.set_screen_resolution(vzd.ScreenResolution.RES_320X240)
 
-    # Inicializar el juego (después de setear todo).
     game.init()
     return game
 
@@ -59,25 +87,77 @@ def create_game():
 
 def get_actions():
     """
-    Para el escenario basic.cfg normalmente hay 3 botones:
+    Definimos acciones para escenarios de combate simples con:
     [TURN_LEFT, TURN_RIGHT, ATTACK]
-
-    Cada acción es una lista de 0/1 indicando si se presiona cada botón.
-    Aquí definimos algunas combinaciones útiles.
     """
-    actions = [
-        [1, 0, 0],  # girar a la izquierda
-        [0, 1, 0],  # girar a la derecha
-        [0, 0, 1],  # disparar
-        [0, 0, 0],  # no hacer nada
-        [1, 0, 1],  # girar izquierda + disparar
-        [0, 1, 1],  # girar derecha + disparar
+    return [
+        [1, 0, 0],  # 0: girar a la izquierda
+        [0, 1, 0],  # 1: girar a la derecha
+        [0, 0, 1],  # 2: disparar
+        [0, 0, 0],  # 3: no hacer nada
+        [1, 0, 1],  # 4: girar izquierda + disparar
+        [0, 1, 1],  # 5: girar derecha + disparar
     ]
-    return actions
 
 
 # -------------------------
-# 3. Loop principal
+# 3. Policy tonta pero lógica
+# -------------------------
+
+def heuristic_policy(actions, health, ammo, kills, prev_kills, step_idx):
+    """
+    Política handcrafted muy simple para escenarios tipo defend_the_center:
+
+    Idea:
+    - Si no tienes munición: deja de disparar y solo rota para "buscar".
+    - Si tienes munición:
+        - Mantén fuego frecuente (porque el enemigo está entrando al área).
+        - Oscila derecha/izquierda para cubrir 360°.
+    - Si ves que aumentan los kills (kills > prev_kills):
+        - Sigue disparando en la misma dirección (algo funcionó).
+    - Si pasó mucho tiempo sin kills:
+        - Cambia de dirección.
+
+    No es inteligente, pero:
+    - Usa info del entorno.
+    - Genera comportamiento consistente y un poco menos random.
+    """
+
+    # Indices legibles
+    TURN_LEFT = 0
+    TURN_RIGHT = 1
+    ATTACK = 2
+    LEFT_SHOOT = 4
+    RIGHT_SHOOT = 5
+
+    # Sin munición → gira sin disparar (barrer entorno)
+    if ammo <= 0:
+        # alterna direcciones según step_idx para no quedarse pegado
+        if (step_idx // 10) % 2 == 0:
+            return actions[TURN_LEFT]
+        else:
+            return actions[TURN_RIGHT]
+
+    # Con munición:
+    # Si acabamos de matar a alguien → insiste un poco en la misma rotación + disparo
+    if kills > prev_kills:
+        # Probamos girar derecha + disparar (o podrías memorizar última dirección)
+        return actions[RIGHT_SHOOT]
+
+    # Si no matas hace rato: oscilar
+    # Ejemplo: bloques de 20 steps, 10 mirando-disparando a la izquierda, 10 a la derecha
+    phase = (step_idx // 10) % 4
+
+    if phase in [0, 1]:
+        # Disparar girando izquierda
+        return actions[LEFT_SHOOT]
+    else:
+        # Disparar girando derecha
+        return actions[RIGHT_SHOOT]
+
+
+# -------------------------
+# 4. Loop principal
 # -------------------------
 
 def main():
@@ -85,65 +165,64 @@ def main():
     actions = get_actions()
 
     NUM_EPISODES = 5
-    FRAME_SKIP = 4  # Avanza varios frames por acción (más rápido y más estable)
+    FRAME_SKIP = 4  # Avanza varios ticks con la misma acción
 
-    # Directorio para logs simples
     os.makedirs("logs", exist_ok=True)
     log_path = os.path.join(
         "logs",
-        f"basic_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        f"{SCENARIO}_heuristic_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     )
     log_file = open(log_path, "w", encoding="utf-8")
-
-    # Escribimos cabecera del log (para que luego sea fácil parsearlo)
-    log_file.write("# frame\taction\treward\thealth-armor\n")
+    log_file.write("# frame\taction\treward\thealth\tammo\tkills\n")
 
     for ep in range(NUM_EPISODES):
         print(f"\n[EPISODIO {ep + 1}]")
         game.new_episode()
 
+        prev_kills = 0
+        step_idx = 0
+
         while not game.is_episode_finished():
+            time.sleep(0.5)
             state = game.get_state()
-
-            # state contiene:
-            # - state.screen_buffer: imagen del juego (array)
-            # - state.game_variables: por ejemplo salud, munición, etc. según el escenario
-            # - state.number: índice del frame dentro del episodio
             frame_idx = state.number
-            # Preferred: use the game API
+
+            # Variables importantes del HUD
             health = game.get_game_variable(vzd.GameVariable.HEALTH)
-            selected_ammo = game.get_game_variable(vzd.GameVariable.SELECTED_WEAPON_AMMO)
-            kill_count = game.get_game_variable(vzd.GameVariable.KILLCOUNT)
-            game_vars = [health, selected_ammo, kill_count]
+            ammo = game.get_game_variable(vzd.GameVariable.SELECTED_WEAPON_AMMO)
+            kills = game.get_game_variable(vzd.GameVariable.KILLCOUNT)
 
-            # ===== ACCIÓN POR API =====
-            # Aquí va la "política".
-            # Por ahora usamos algo aleatorio solo para probar el pipeline.
-            # Luego reemplazamos esto por tu red neuronal.
-            action = random.choice(actions)
-
-            # Ejecutamos la acción.
-            # FRAME_SKIP indica cuántos ticks del juego avanza manteniendo esa acción.
-            reward = game.make_action(action, FRAME_SKIP)
-
-            # ===== LOG =====
-            # Guardamos la transición de forma muy simple.
-            # Más adelante puedes serializar estados como npy/pt para entrenamiento offline.
-            log_file.write(f"{frame_idx}\t{action}\t{reward:.3f}\t{game_vars}\n")
-
-            # Print en consola para feedback rápido (sobrescribe la línea).
-            print(
-                f"frame={frame_idx:04d} action={action} "
-                f"reward={reward:.3f} vars={game_vars}",
-                end="\r",
+            # Policy tonta pero lógica
+            action = heuristic_policy(
+                actions=actions,
+                health=health,
+                ammo=ammo,
+                kills=kills,
+                prev_kills=prev_kills,
+                step_idx=step_idx
             )
 
-        # Al terminar el episodio vemos el score total
+            reward = game.make_action(action, FRAME_SKIP)
+
+            # Log
+            log_file.write(
+                f"{frame_idx}\t{action}\t{reward:.3f}\t{health}\t{ammo}\t{kills}\n"
+            )
+
+            # Feedback en consola
+            print(
+                f"ep={ep+1} step={step_idx:04d} frame={frame_idx:04d} "
+                f"act={action} rew={reward:.3f} H={health} A={ammo} K={kills}",
+                end="\r"
+            )
+
+            prev_kills = kills
+            step_idx += 1
+
         total_reward = game.get_total_reward()
         print(f"\nFin del episodio {ep + 1} | Score total = {total_reward:.3f}")
 
     log_file.close()
-    time.sleep(5)
     game.close()
     print(f"\nLogs guardados en: {log_path}")
 
