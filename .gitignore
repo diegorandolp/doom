@@ -3,6 +3,7 @@
 logs/
 _vizdoom.ini
 _vizdoom/
+*.pth
 # -------------------
 
 # Byte-compiled / optimized / DLL files

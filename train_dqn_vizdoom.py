@@ -94,7 +94,9 @@ def preprocess_obs(obs):
 
     # Añadir canal (1, H, W)
     return resized[np.newaxis, :, :].astype(np.float32)
-
+def save_checkpoint(model, filename="dqn_vizdoom_model.pth"):
+    torch.save(model.state_dict(), filename)
+    print(f"Modelo guardado en: {filename}")
 
 # =========================
 # 3. Replay Buffer
@@ -229,6 +231,9 @@ def main():
     global_step = 0
     episode_rewards = []
 
+    best_avg_reward = -float('inf')
+    MODEL_FILE = "dqn_vizdoom_best.pth"
+
     for ep in range(1, NUM_EPISODES + 1):
         obs, info = env.reset()
         state = preprocess_obs(obs)
@@ -280,7 +285,13 @@ def main():
                 f"Buffer={len(replay_buffer)} | "
                 f"Eps={epsilon:.3f}"
             )
+            # Guardar si es el mejor promedio hasta ahora (y ya pasó la fase aleatoria pura)
+            if avg_last_10 > best_avg_reward and global_step > START_TRAINING_AFTER:
+                best_avg_reward = avg_last_10
+                save_checkpoint(policy_net, MODEL_FILE)
 
+    save_checkpoint(policy_net, "dqn_vizdoom_final.pth")
+    
     env.close()
     print("Entrenamiento terminado.")
 
