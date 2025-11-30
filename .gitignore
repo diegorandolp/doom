@@ -1,9 +1,11 @@
 # Mine --------------
-
+data/
 logs/
 _vizdoom.ini
 _vizdoom/
 *.pth
+*.err
+*.out
 # -------------------
 
 # Byte-compiled / optimized / DLL files

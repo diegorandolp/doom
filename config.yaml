@@ -1,0 +1,44 @@
+experiment:
+  name: "DOOM_PPO_IMPALA_PopArt_v1"
+  gpu_id: 0
+  total_timesteps: 50_000_000  # 50M steps is doable in 5 days on 40GB GPU
+
+env:
+  scenarios: 
+    - "basic"
+    - "deadly_corridor"
+    - "deathmatch"
+    - "defend_the_center"
+    - "defend_the_line"
+    - "health_gathering_supreme"
+    - "health_gathering"
+    - "multi_deathmatch"
+    - "my_way_home"
+    - "predict_position"
+    - "rocket_basic"
+    - "simpler_basic"
+    - "take_cover"
+
+  frame_stack: 4
+  resolution: [128, 72] # [H, W]
+  action_repeat: 4      # Standard for Doom
+  reward_scaling: "popart" # Automatic normalization
+
+model:
+  type: "impala_gru"
+  channels: [16, 32, 32] # Channel depth for Impala blocks
+  hidden_size: 512
+  use_aux_tasks: true    # Enable depth/health prediction heads
+
+training:
+  algo: "ppo"
+  num_envs: 32           # Parallel environments
+  n_steps: 128           # Steps per env per update
+  batch_size: 4096       # 32 * 128. fits easily in 40GB VRAM
+  learning_rate: 2.5e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.1
+  # The Secret Sauce: Behavioral Cloning Warmup
+  bc_warmup_steps: 100_000 
+  bc_loss_coeff: 0.5
