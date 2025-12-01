@@ -12,6 +12,14 @@ from gymnasium.vector import AsyncVectorEnv # Changed from gym.vector
 from model import DoomAgent
 from wrappers import DoomEnv
 
+# --- CRITICAL GPU CHECK ---
+if not torch.cuda.is_available():
+    raise RuntimeError("❌ CUDA not available! I am refusing to run on CPU. Check your drivers/installation.")
+
+print(f"✅ GPU DETECTED: {torch.cuda.get_device_name(0)}")
+torch.cuda.empty_cache() # Clear any residual memory
+# --------------------------
+
 # --- HYPERPARAMETERS (The Tuning Knobs) ---
 CONFIG = {
     "device": "cuda" if torch.cuda.is_available() else "cpu",
@@ -270,6 +278,12 @@ def train_ppo(agent, optimizer):
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), 0.5)
                 optimizer.step()
+
+        if global_step % (CONFIG["batch_size"] * 100) == 0:
+            # Calculate rough average reward of this batch (unscaled if possible, but scaled is fine)
+            avg_reward = b_returns.mean().item()
+            print(f"Step {global_step} | Avg Return: {avg_reward:.2f} | Value Loss: {value_loss.item():.1f}")
+
         
         global_step += CONFIG["num_envs"] * CONFIG["rollout_steps"]
         print(f"Step {global_step} | Policy Loss: {policy_loss.item():.3f} | Value Loss: {value_loss.item():.3f}")

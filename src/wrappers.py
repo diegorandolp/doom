@@ -62,6 +62,7 @@ class DoomEnv(gym.Env):
             cmd[self.available_buttons.index(target_btn)] = 1
         
         reward = self.game.make_action(cmd, 4)
+        reward = reward * 0.01
         done = self.game.is_episode_finished()
         
         if done:
