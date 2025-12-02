@@ -1,0 +1,50 @@
+#!/bin/bash
+#SBATCH -A investigacion2
+#SBATCH --job-name=doom_winner
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1            
+#SBATCH --cpus-per-task=64
+#SBATCH --mem=128G
+#SBATCH --output=./train_winner.out
+#SBATCH --error=./train_winner.err
+#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-user=diego.quispe.ap@utec.edu.pe
+
+# Navigate to directory
+cd /home/diego.quispe/deep/doom/new_src
+
+# Load environment
+source ~/.bashrc
+source activate base
+
+export WANDB_API_KEY="3de070815ec42dc59d9a54d1c6256b66010e9576"
+
+# --- DEBUG & VERIFICATION ---
+echo "=========================================="
+echo "Starting Job on Host: $(hostname)"
+echo "Date: $(date)"
+echo "Allocated CPUs: $SLURM_CPUS_PER_TASK"
+echo "Allocated Mem: $SLURM_MEM_PER_NODE"
+echo "GPU Info:"
+nvidia-smi
+echo "=========================================="
+
+srun python train_winner.py \
+  --env=doom_multi_task \
+  --experiment=doom_champion_v1 \
+  --algo=APPO \
+  --num_workers=50 \
+  --num_envs_per_worker=8 \
+  --batch_size=4096 \
+  --rnn_size=512 \
+  --rnn_type=gru \
+  --normalize_input=True \
+  --normalize_returns=True \
+  --gamma=0.995 \
+  --learning_rate=0.0001 \
+  --max_grad_norm=4.0 \
+  --with_wandb=False \
+  --save_every_sec=3600 \
+  --keep_checkpoints=10 \
+  --save_best_every_sec=300 \
+  --train_for_env_steps=2000000000
