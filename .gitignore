@@ -6,6 +6,8 @@ _vizdoom/
 *.pth
 *.err
 *.out
+new_src/wandb/
+.summary/
 # -------------------
 
 # Byte-compiled / optimized / DLL files
