@@ -1,4 +1,5 @@
 # Mine --------------
+*.mp4
 data/
 logs/
 _vizdoom.ini
