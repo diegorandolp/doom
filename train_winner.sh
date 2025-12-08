@@ -36,13 +36,15 @@ srun python train_winner.py \
   --num_workers=50 \
   --num_envs_per_worker=8 \
   --batch_size=4096 \
-  --rnn_size=512 \
+  --rnn_size=1024 \
   --rnn_type=gru \
   --normalize_input=True \
   --normalize_returns=True \
-  --gamma=0.995 \
+  --gamma=0.999 \
+  --exploration_loss_coeff=0.004 \
   --learning_rate=0.0001 \
   --max_grad_norm=4.0 \
+  --env_framestack=4 \
   --with_wandb=False \
   --save_every_sec=3600 \
   --keep_checkpoints=10 \

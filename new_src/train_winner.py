@@ -13,7 +13,8 @@ from sf_examples.vizdoom.doom.doom_model import make_vizdoom_encoder
 from sf_examples.vizdoom.doom.doom_utils import make_doom_env_from_spec, DoomSpec
 from sf_examples.vizdoom.doom.doom_params import add_doom_env_args, doom_override_defaults
 # Added this import based on your example to ensure correct buttons are available
-from sf_examples.vizdoom.doom.action_space import doom_action_space_extended 
+#from sf_examples.vizdoom.doom.action_space import doom_action_space_extended 
+from sf_examples.vizdoom.doom.action_space import doom_action_space_discretized
 
 # --- CONFIGURATION: Mapping Scenarios to Config Files ---
 SCENARIO_CONFIGS = {
@@ -39,7 +40,7 @@ def make_multi_task_doom_env(full_env_name, cfg=None, env_config=None, render_mo
     # 3. Create the Spec
     # We use the extended action space to ensure the agent can perform all moves (turn, shoot, strafe)
     # regardless of which map it is currently playing.
-    env_spec = DoomSpec(scenario_name, config_file, doom_action_space_extended())
+    env_spec = DoomSpec(scenario_name, config_file, doom_action_space_discretized())
     
     # 4. Create the environment
     # FIX: We now pass 'full_env_name' as the second argument, which fixes the TypeError.
