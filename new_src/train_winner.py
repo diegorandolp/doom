@@ -15,7 +15,7 @@ from sf_examples.vizdoom.doom.doom_params import add_doom_env_args, doom_overrid
 # Added this import based on your example to ensure correct buttons are available
 #from sf_examples.vizdoom.doom.action_space import doom_action_space_extended 
 from sf_examples.vizdoom.doom.action_space import doom_action_space_discretized
-
+from custom_model import register_custom_model
 # --- CONFIGURATION: Mapping Scenarios to Config Files ---
 SCENARIO_CONFIGS = {
     "doom_basic": "basic.cfg",
@@ -90,6 +90,8 @@ def verify_gpu_or_die():
 def main():
     verify_gpu_or_die()
     register_custom_components()
+    # new arch
+    register_custom_model()
     cfg = parse_vizdoom_cfg()
     status = run_rl(cfg)
     return status
