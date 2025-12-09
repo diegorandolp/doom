@@ -9,6 +9,8 @@ _vizdoom/
 *.out
 new_src/wandb/
 .summary/
+new_src/train_dir/doom_champion_v1/*.txt
+
 # -------------------
 
 # Byte-compiled / optimized / DLL files
