@@ -17,8 +17,6 @@ cd /home/diego.quispe/deep/doom/new_src
 source ~/.bashrc
 source activate base
 
-export WANDB_API_KEY="3de070815ec42dc59d9a54d1c6256b66010e9576"
-
 # --- DEBUG & VERIFICATION ---
 echo "=========================================="
 echo "Starting Job on Host: $(hostname)"
@@ -42,9 +40,9 @@ srun python train_winner.py \
   --normalize_returns=True \
   --gamma=0.999 \
   --exploration_loss_coeff=0.004 \
-  --learning_rate=0.0001 \
+  --learning_rate=0.00005 \
   --max_grad_norm=4.0 \
-  --env_framestack=4 \
+  --env_framestack=1 \
   --with_wandb=False \
   --save_every_sec=3600 \
   --keep_checkpoints=10 \
