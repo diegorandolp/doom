@@ -22,6 +22,7 @@ from sf_examples.vizdoom.doom.doom_utils import make_doom_env_from_spec, DoomSpe
 from sf_examples.vizdoom.doom.doom_params import add_doom_env_args, doom_override_defaults
 from sf_examples.vizdoom.doom.action_space import doom_action_space_discretized
 
+from custom_model import register_custom_model
 # --- CONFIGURATION ---
 SCENARIO_CONFIGS = {
     "doom_basic": "basic.cfg",
@@ -86,6 +87,8 @@ def main():
     # 1. Register
     register_custom_components()
 
+    # new arch
+    register_custom_model()
     # 2. Parse Config
     cfg = parse_vizdoom_cfg(evaluation=True)
 
