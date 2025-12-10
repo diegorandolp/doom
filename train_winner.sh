@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -A investigacion2
-#SBATCH --job-name=doom_winner
+#SBATCH --job-name=salmas
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1            
 #SBATCH --cpus-per-task=64
@@ -31,17 +31,22 @@ srun python train_winner.py \
   --env=doom_multi_task \
   --experiment=doom_champion_v1 \
   --algo=APPO \
-  --num_workers=50 \
+  --num_workers=40 \
   --num_envs_per_worker=8 \
-  --batch_size=4096 \
+  --batch_size=2048 \
   --rnn_size=1024 \
+  --use_rnn=True \
   --rnn_type=gru \
+  --rollout=256 \
+  --recurrence=256 \
   --normalize_input=True \
   --normalize_returns=True \
-  --gamma=0.999 \
-  --exploration_loss_coeff=0.004 \
-  --learning_rate=0.00005 \
+  --num_epochs=2 \
+  --gamma=0.997 \
+  --exploration_loss_coeff=0.002 \
+  --learning_rate=0.0001 \
   --max_grad_norm=4.0 \
+  --env_frameskip=2 \
   --env_framestack=1 \
   --with_wandb=False \
   --save_every_sec=3600 \
