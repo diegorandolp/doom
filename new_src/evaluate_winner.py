@@ -22,18 +22,25 @@ from sf_examples.vizdoom.doom.doom_utils import make_doom_env_from_spec, DoomSpe
 from sf_examples.vizdoom.doom.doom_params import add_doom_env_args, doom_override_defaults
 from sf_examples.vizdoom.doom.action_space import doom_action_space_discretized
 
-from custom_model import register_custom_model
+from custom_model import register_model_components 
 # --- CONFIGURATION ---
 SCENARIO_CONFIGS = {
+    "doom_rocket_basic": "rocket_basic.cfg",
+
     "doom_basic": "basic.cfg",
     "doom_deadly_corridor": "deadly_corridor.cfg",
     "doom_defend_the_center": "defend_the_center.cfg",
     "doom_health_gathering_supreme": "health_gathering_supreme.cfg",
     "doom_my_way_home": "my_way_home.cfg",
-    "doom_predict_position": "predict_position.cfg",
-    "doom_take_cover": "take_cover.cfg",
-    ##########
-    "doom_deathmatch": "deathmatch.cfg"
+    #"doom_predict_position": "predict_position.cfg",
+    #"doom_take_cover": "take_cover.cfg",
+    # New Scenarios (Added by request)
+    "doom_deathmatch": "deathmatch.cfg", 
+    "doom_health_gathering": "health_gathering.cfg",
+    "doom_battle": "battle.cfg",
+    "doom_battle2": "battle2_continuous_turning.cfg", # Assuming standard name or verify file exists
+    "doom_defend_the_line": "defend_the_line.cfg",
+    "doom_two_colors_hard": "two_colors_hard.cfg" # Added .cfg extension just in case
 }
 
 def make_multi_task_doom_env(full_env_name, cfg=None, env_config=None, render_mode=None, **kwargs):
@@ -66,7 +73,7 @@ def make_multi_task_doom_env(full_env_name, cfg=None, env_config=None, render_mo
 
 def register_custom_components():
     register_env("doom_multi_task", make_multi_task_doom_env)
-    global_model_factory().register_encoder_factory(make_vizdoom_encoder)
+    register_model_components()
 
 def parse_vizdoom_cfg(argv=None, evaluation=True):
     # Note evaluation=True here
@@ -87,8 +94,6 @@ def main():
     # 1. Register
     register_custom_components()
 
-    # new arch
-    register_custom_model()
     # 2. Parse Config
     cfg = parse_vizdoom_cfg(evaluation=True)
 
