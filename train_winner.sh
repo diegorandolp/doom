@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -A investigacion2
-#SBATCH --job-name=salmas
+#SBATCH --job-name=salmas_final
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1            
-#SBATCH --cpus-per-task=64
-#SBATCH --mem=128G
+#SBATCH --cpus-per-task=80
+#SBATCH --mem=150G
 #SBATCH --output=./train_winner.out
 #SBATCH --error=./train_winner.err
 #SBATCH --mail-type=END,FAIL
@@ -30,8 +30,9 @@ echo "=========================================="
 srun python train_winner.py \
   --env=doom_multi_task \
   --experiment=doom_champion_v1 \
+  --load_checkpoint_kind=latest \
   --algo=APPO \
-  --num_workers=40 \
+  --num_workers=60 \
   --num_envs_per_worker=8 \
   --batch_size=2048 \
   --rnn_size=1024 \
@@ -44,12 +45,12 @@ srun python train_winner.py \
   --num_epochs=2 \
   --gamma=0.997 \
   --exploration_loss_coeff=0.002 \
-  --learning_rate=0.0001 \
+  --learning_rate=0.00005 \
   --max_grad_norm=4.0 \
   --env_frameskip=2 \
   --env_framestack=1 \
   --with_wandb=False \
-  --save_every_sec=3600 \
-  --keep_checkpoints=10 \
+  --save_every_sec=1800 \
+  --keep_checkpoints=5 \
   --save_best_every_sec=300 \
   --train_for_env_steps=2000000000

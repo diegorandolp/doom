@@ -1,7 +1,5 @@
 import sys
-
 import random
-
 import torch
 
 
@@ -37,35 +35,15 @@ from custom_model import register_model_components
 # --- CONFIGURATION: Mapping Scenarios to Config Files ---
 
 SCENARIO_CONFIGS = {
-
-    "doom_basic": "basic.cfg",
+    "doom_rocket_basic": "rocket_basic.cfg",
 
     "doom_deadly_corridor": "deadly_corridor.cfg",
-
     "doom_defend_the_center": "defend_the_center.cfg",
-
-    "doom_health_gathering_supreme": "health_gathering_supreme.cfg",
-
-    "doom_my_way_home": "my_way_home.cfg",
-
-    #"doom_predict_position": "predict_position.cfg",
-
-    #"doom_take_cover": "take_cover.cfg",
-
-    # New Scenarios (Added by request)
-
-    "doom_deathmatch": "deathmatch.cfg", 
-
-    "doom_health_gathering": "health_gathering.cfg",
-
-    "doom_battle": "battle.cfg",
-
-    "doom_battle2": "battle2_continuous_turning.cfg", # Assuming standard name or verify file exists
-
     "doom_defend_the_line": "defend_the_line.cfg",
 
-    "doom_two_colors_hard": "two_colors_hard.cfg" # Added .cfg extension just in case
-
+    "doom_deathmatch": "deathmatch.cfg", 
+    "doom_battle": "battle.cfg",
+    "doom_battle2": "battle2_continuous_turning.cfg", # Assuming standard name or verify file exists
 }
 
 
